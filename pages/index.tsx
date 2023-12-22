@@ -45,15 +45,12 @@ const Home: NextPage = () => {
   });
 
   const [imageData, setImageData] = useState<any>(null);
-  useEffect(() => {
-    console.log(imageData);
-  }, [imageData]);
+
   const [imageDataBase64, setImageDataBase64] = useState<any>(null);
 
   function onSubmit() {
     let formData = new FormData();
     formData.append("file", imageData);
-    console.log(formData.getAll);
     (async () => {
       const data = await QueryAPI.uploadImage(formData);
       const res = data?.data.data;
@@ -120,38 +117,27 @@ const Home: NextPage = () => {
           <div
             className="w-[45rem] h-[400px] flex flex-row items-center justify-center"
             draggable="true"
-            onDragStart={(e) => {
-              console.log("Drag");
-            }}
             onDragEnd={(e) => {
               e.preventDefault();
-              console.log("Drag Ended");
             }}
             onDragOver={(e) => {
               e.preventDefault();
             }}
             onDrop={(e) => {
               e.preventDefault();
-              console.log("Dropped");
               e.stopPropagation();
               const dt = e.dataTransfer;
               const data = dt.files;
-              console.log(data);
               setImageData(data[0]);
               const fileReader = new FileReader();
 
               fileReader.readAsDataURL(data[0]);
 
               fileReader.onloadend = function (e) {
-                console.log(e.target?.result);
                 setImageDataBase64(e.target?.result);
               };
             }}
-            onDragEnter={() => {
-              console.log("Enter");
-            }}
             onClick={() => {
-              console.log(fileRef.current.value);
               fileRef.current.click();
             }}
           >
