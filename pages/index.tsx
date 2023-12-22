@@ -20,7 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { Field, Form, Formik, FormikBag } from "formik";
 import * as yup from "yup";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import QueryAPI from "@/service/QueryAPI";
 
@@ -38,6 +38,11 @@ const Home: NextPage = () => {
     condition: "-",
     disease: "-",
   });
+  const [resnet, setResnet] = useState({
+    name: "-",
+    condition: "-",
+    disease: "-",
+  });
 
   const [imageData, setImageData] = useState<any>(null);
   useEffect(() => {
@@ -51,11 +56,38 @@ const Home: NextPage = () => {
     console.log(formData.getAll);
     (async () => {
       const data = await QueryAPI.uploadImage(formData);
-      console.log(data.data.data);
+      const res = data?.data.data;
+      if (res !== null) {
+        const dataVGG = {
+          name: res.vgg16.name,
+          condition: res.vgg16.condition,
+          disease: res.vgg16.disease,
+        };
+        setVGG16(dataVGG);
+
+        const dataResnet = {
+          name: res.resnet.name,
+          condition: res.resnet.condition,
+          disease: res.resnet.disease,
+        };
+        setResnet(dataResnet);
+      } else {
+        setVGG16({
+          name: "-",
+          condition: "-",
+          disease: "-",
+        });
+        setResnet({
+          name: "-",
+          condition: "-",
+          disease: "-",
+        });
+      }
     })();
   }
+  const fileRef = useRef<any>();
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center">
+    <div className="h-full w-full flex flex-col items-center justify-center">
       <div
         className={`w-[400px] h-[400px] left-[-100px] top-[-80px] overflow-hidden fixed -z-10`}
       >
@@ -77,16 +109,16 @@ const Home: NextPage = () => {
         />
       </div>
       <div className="w-fit h-full flex flex-col items-center justify-center">
-        <Box>
+        <Box mb={"48px"} mt={"128px"}>
           <Heading size={"xl"}>
             <Text as="span">Plant Disease </Text>
             Image Classification
           </Heading>
         </Box>
 
-        <div className=" max-w-[35vw] rounded-xl border-dashed border-4 w-screen h-[400px] overflow-hidden">
+        <div className="rounded-xl border-dashed border-4 overflow-hidden">
           <div
-            className="w-full h-full flex flex-row items-center justify-center"
+            className="w-[45rem] h-[400px] flex flex-row items-center justify-center"
             draggable="true"
             onDragStart={(e) => {
               console.log("Drag");
@@ -118,10 +150,31 @@ const Home: NextPage = () => {
             onDragEnter={() => {
               console.log("Enter");
             }}
+            onClick={() => {
+              console.log(fileRef.current.value);
+              fileRef.current.click();
+            }}
           >
             {imageData === null || imageDataBase64 == "" ? (
               <Heading className=" max-w-[15rem] text-center" size={"md"}>
                 Click or Drag And Drop to Upload Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileRef}
+                  onChange={(e) => {
+                    setImageData(e.target.files ? e.target.files[0] : null);
+                    const fileReader = new FileReader();
+                    if (e.target.files) {
+                      fileReader.readAsDataURL(e.target.files[0]);
+
+                      fileReader.onloadend = function (e) {
+                        setImageDataBase64(e.target?.result);
+                      };
+                    }
+                  }}
+                />
               </Heading>
             ) : (
               <div className="w-full h-full relative">
@@ -135,64 +188,109 @@ const Home: NextPage = () => {
             )}
           </div>
         </div>
-        <HStack className="w-full">
+        <HStack w={"full"} mt={"48px"}>
           <Button
             onClick={() => {
               setImageData(null);
               setImageDataBase64(null);
+              fileRef.current.files = undefined;
             }}
           >
-            Remove
+            Remove Image
           </Button>
           <Button onClick={onSubmit}>Classify Plant Disease</Button>
         </HStack>
-
-        <Heading size={"lg"}>Classification Result</Heading>
-        <HStack>
-          <Box>
-            <Text>VGG16</Text>
-            <TableContainer>
-              <Table>
-                <Tbody>
-                  <Tr>
-                    <Td>Plant Name</Td>
-                    <Td>: {vgg16.name}</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>Condition</Td>
-                    <Td>: {vgg16.condition}</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>Disease</Td>
-                    <Td>: {vgg16.disease}</Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
-          <Box>
-            <Text>ResNet50V2</Text>
-            <TableContainer>
-              <Table>
-                <Tbody>
-                  <Tr>
-                    <Td>Plant Name</Td>
-                    <Td>: {vgg16.name}</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>Condition</Td>
-                    <Td>: {vgg16.condition}</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>Disease</Td>
-                    <Td>: {vgg16.disease}</Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </HStack>
-        <Button>Clear Results</Button>
+        <VStack gap={"16px"} align={"left"} w="full" mt={"48px"}>
+          <Heading size={"lg"}>Classification Result</Heading>
+          <HStack w={"full"} fontWeight={"bold"}>
+            <Box>
+              <Text>VGG16</Text>
+              <TableContainer>
+                <Table>
+                  <Tbody>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Plant Name
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {vgg16.name}
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Condition
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {vgg16.condition}
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Disease
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {vgg16.disease}
+                      </Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Box>
+            <Box ml={"128px"}>
+              <Text>ResNet50V2</Text>
+              <TableContainer>
+                <Table>
+                  <Tbody>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Plant Name
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {resnet.name}
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Condition
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {resnet.condition}
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        Disease
+                      </Td>
+                      <Td border={"none"} textAlign={"left"} pl={0}>
+                        : {resnet.disease}
+                      </Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </HStack>
+          <Button
+            w="fit-content"
+            bgColor={"red.800"}
+            textColor={"white"}
+            _hover={{}}
+            onClick={() => {
+              setVGG16({
+                name: "-",
+                condition: "-",
+                disease: "-",
+              });
+              setResnet({
+                name: "-",
+                condition: "-",
+                disease: "-",
+              });
+            }}
+          >
+            Clear Results
+          </Button>
+        </VStack>
       </div>
     </div>
   );
