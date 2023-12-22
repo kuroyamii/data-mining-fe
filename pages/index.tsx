@@ -179,7 +179,7 @@ const Home: NextPage = () => {
             onClick={() => {
               setImageData(null);
               setImageDataBase64(null);
-              fileRef.current.files = undefined;
+              // fileRef.current.files = undefined;
             }}
           >
             Remove Image
