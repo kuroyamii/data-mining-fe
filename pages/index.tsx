@@ -17,12 +17,15 @@ import {
   Thead,
   Tr,
   VStack,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { Field, Form, Formik, FormikBag } from "formik";
 import * as yup from "yup";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import QueryAPI from "@/service/QueryAPI";
+import axios from "axios";
+import LoadingModal from "@/components/modal/LoadingModal";
 
 const Home: NextPage = () => {
   const initialValues = {
@@ -47,14 +50,20 @@ const Home: NextPage = () => {
   const [imageData, setImageData] = useState<any>(null);
 
   const [imageDataBase64, setImageDataBase64] = useState<any>(null);
-
+  const [cancelSource, setCancelSource] = useState<any>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   function onSubmit() {
     let formData = new FormData();
+    const source = axios.CancelToken.source();
+    setCancelSource(source);
     formData.append("file", imageData);
+    onOpen();
     (async () => {
-      const data = await QueryAPI.uploadImage(formData);
+      const data = await QueryAPI.uploadImage(formData, source);
       const res = data?.data.data;
-      if (res !== null) {
+      console.log(res);
+      if (res !== null && res !== undefined) {
+        onClose();
         const dataVGG = {
           name: res.vgg16.name,
           condition: res.vgg16.condition,
@@ -84,201 +93,209 @@ const Home: NextPage = () => {
   }
   const fileRef = useRef<any>();
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center">
-      <div
-        className={`w-[400px] h-[400px] left-[-100px] top-[-80px] overflow-hidden fixed -z-10`}
-      >
-        <Image
-          src={"/plant 1.png"}
-          alt={"plant"}
-          fill
-          className="object-contain"
-        />
-      </div>
-      <div
-        className={`w-[350px] h-[350px] right-[-90px] bottom-[-40px] overflow-hidden fixed -z-10`}
-      >
-        <Image
-          src={"/plant 2.png"}
-          alt={"plant"}
-          fill
-          className="object-contain"
-        />
-      </div>
-      <div className="w-fit h-full flex flex-col items-center justify-center">
-        <Box mb={"48px"} mt={"128px"}>
-          <Heading size={"xl"}>
-            <Text as="span">Plant Disease </Text>
-            Image Classification
-          </Heading>
-        </Box>
-
-        <div className="rounded-xl border-dashed border-4 overflow-hidden">
-          <div
-            className="w-[45rem] h-[400px] flex flex-row items-center justify-center"
-            draggable="true"
-            onDragEnd={(e) => {
-              e.preventDefault();
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const dt = e.dataTransfer;
-              const data = dt.files;
-              setImageData(data[0]);
-              const fileReader = new FileReader();
-
-              fileReader.readAsDataURL(data[0]);
-
-              fileReader.onloadend = function (e) {
-                setImageDataBase64(e.target?.result);
-              };
-            }}
-            onClick={() => {
-              fileRef.current.click();
-            }}
-          >
-            {imageData === null || imageDataBase64 == "" ? (
-              <Heading className=" max-w-[15rem] text-center" size={"md"}>
-                Click or Drag And Drop to Upload Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileRef}
-                  onChange={(e) => {
-                    setImageData(e.target.files ? e.target.files[0] : null);
-                    const fileReader = new FileReader();
-                    if (e.target.files) {
-                      fileReader.readAsDataURL(e.target.files[0]);
-
-                      fileReader.onloadend = function (e) {
-                        setImageDataBase64(e.target?.result);
-                      };
-                    }
-                  }}
-                />
-              </Heading>
-            ) : (
-              <div className="w-full h-full relative">
-                <Image
-                  src={imageDataBase64 ? imageDataBase64 : ""}
-                  alt="data"
-                  layout="fill"
-                  className="object-cover"
-                />
-              </div>
-            )}
-          </div>
+    <>
+      <LoadingModal
+        isOpen={isOpen}
+        onClose={onClose}
+        cancelSource={cancelSource}
+        setCancelSource={setCancelSource}
+      />
+      <div className="h-full w-full flex flex-col items-center justify-center">
+        <div
+          className={`w-[400px] h-[400px] left-[-100px] top-[-80px] overflow-hidden fixed -z-10`}
+        >
+          <Image
+            src={"/plant 1.png"}
+            alt={"plant"}
+            fill
+            className="object-contain"
+          />
         </div>
-        <HStack w={"full"} mt={"48px"}>
-          <Button
-            onClick={() => {
-              setImageData(null);
-              setImageDataBase64(null);
-              // fileRef.current.files = undefined;
-            }}
-          >
-            Remove Image
-          </Button>
-          <Button onClick={onSubmit}>Classify Plant Disease</Button>
-        </HStack>
-        <VStack gap={"16px"} align={"left"} w="full" mt={"48px"}>
-          <Heading size={"lg"}>Classification Result</Heading>
-          <HStack w={"full"} fontWeight={"bold"}>
-            <Box>
-              <Text>VGG16</Text>
-              <TableContainer>
-                <Table>
-                  <Tbody>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Plant Name
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {vgg16.name}
-                      </Td>
-                    </Tr>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Condition
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {vgg16.condition}
-                      </Td>
-                    </Tr>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Disease
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {vgg16.disease}
-                      </Td>
-                    </Tr>
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </Box>
-            <Box ml={"128px"}>
-              <Text>ResNet50V2</Text>
-              <TableContainer>
-                <Table>
-                  <Tbody>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Plant Name
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {resnet.name}
-                      </Td>
-                    </Tr>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Condition
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {resnet.condition}
-                      </Td>
-                    </Tr>
-                    <Tr>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        Disease
-                      </Td>
-                      <Td border={"none"} textAlign={"left"} pl={0}>
-                        : {resnet.disease}
-                      </Td>
-                    </Tr>
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </Box>
+        <div
+          className={`w-[350px] h-[350px] right-[-90px] bottom-[-40px] overflow-hidden fixed -z-10`}
+        >
+          <Image
+            src={"/plant 2.png"}
+            alt={"plant"}
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div className="w-fit h-full flex flex-col items-center justify-center">
+          <Box mb={"48px"} mt={"128px"}>
+            <Heading size={"xl"}>
+              <Text as="span">Plant Disease </Text>
+              Image Classification
+            </Heading>
+          </Box>
+
+          <div className="rounded-xl border-dashed border-4 overflow-hidden">
+            <div
+              className="w-[45rem] h-[400px] flex flex-row items-center justify-center"
+              draggable="true"
+              onDragEnd={(e) => {
+                e.preventDefault();
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const dt = e.dataTransfer;
+                const data = dt.files;
+                setImageData(data[0]);
+                const fileReader = new FileReader();
+
+                fileReader.readAsDataURL(data[0]);
+
+                fileReader.onloadend = function (e) {
+                  setImageDataBase64(e.target?.result);
+                };
+              }}
+              onClick={() => {
+                fileRef.current.click();
+              }}
+            >
+              {imageData === null || imageDataBase64 == "" ? (
+                <Heading className=" max-w-[15rem] text-center" size={"md"}>
+                  Click or Drag And Drop to Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileRef}
+                    onChange={(e) => {
+                      setImageData(e.target.files ? e.target.files[0] : null);
+                      const fileReader = new FileReader();
+                      if (e.target.files) {
+                        fileReader.readAsDataURL(e.target.files[0]);
+
+                        fileReader.onloadend = function (e) {
+                          setImageDataBase64(e.target?.result);
+                        };
+                      }
+                    }}
+                  />
+                </Heading>
+              ) : (
+                <div className="w-full h-full relative">
+                  <Image
+                    src={imageDataBase64 ? imageDataBase64 : ""}
+                    alt="data"
+                    layout="fill"
+                    className="object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <HStack w={"full"} mt={"48px"}>
+            <Button
+              onClick={() => {
+                setImageData(null);
+                setImageDataBase64(null);
+                // fileRef.current.files = undefined;
+              }}
+            >
+              Remove Image
+            </Button>
+            <Button onClick={onSubmit}>Classify Plant Disease</Button>
           </HStack>
-          <Button
-            w="fit-content"
-            bgColor={"red.800"}
-            textColor={"white"}
-            _hover={{}}
-            onClick={() => {
-              setVGG16({
-                name: "-",
-                condition: "-",
-                disease: "-",
-              });
-              setResnet({
-                name: "-",
-                condition: "-",
-                disease: "-",
-              });
-            }}
-          >
-            Clear Results
-          </Button>
-        </VStack>
+          <VStack gap={"16px"} align={"left"} w="full" mt={"48px"}>
+            <Heading size={"lg"}>Classification Result</Heading>
+            <HStack w={"full"} fontWeight={"bold"}>
+              <Box>
+                <Text>VGG16</Text>
+                <TableContainer>
+                  <Table>
+                    <Tbody>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Plant Name
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {vgg16.name}
+                        </Td>
+                      </Tr>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Condition
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {vgg16.condition}
+                        </Td>
+                      </Tr>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Disease
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {vgg16.disease}
+                        </Td>
+                      </Tr>
+                    </Tbody>
+                  </Table>
+                </TableContainer>
+              </Box>
+              <Box ml={"128px"}>
+                <Text>ResNet50V2</Text>
+                <TableContainer>
+                  <Table>
+                    <Tbody>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Plant Name
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {resnet.name}
+                        </Td>
+                      </Tr>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Condition
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {resnet.condition}
+                        </Td>
+                      </Tr>
+                      <Tr>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          Disease
+                        </Td>
+                        <Td border={"none"} textAlign={"left"} pl={0}>
+                          : {resnet.disease}
+                        </Td>
+                      </Tr>
+                    </Tbody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </HStack>
+            <Button
+              w="fit-content"
+              bgColor={"red.800"}
+              textColor={"white"}
+              _hover={{}}
+              onClick={() => {
+                setVGG16({
+                  name: "-",
+                  condition: "-",
+                  disease: "-",
+                });
+                setResnet({
+                  name: "-",
+                  condition: "-",
+                  disease: "-",
+                });
+              }}
+            >
+              Clear Results
+            </Button>
+          </VStack>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
